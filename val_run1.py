@@ -12,18 +12,16 @@ from ftrl_proximal import ftrl_proximal
 from datetime import datetime
 from math import log
 from eval import logloss
-import os.path
-import pdb
 
 
-alpha = 0.1       # learning rate
+alpha = 0.1        # learning rate
 beta = 1.0         # smoothing parameter, probably doesn't matter on big data
 L1 = 0.0000        # l1-regularization
-L2 = 0.1000        # l2-regularization
+L2 = 0.0010        # l2-regularization
 D = 2**26          # feature space size
 interaction = False
-maxlines_train = 10000000
-maxlines_val = 1000000
+maxlines_train = None
+maxlines_val = None
 
 start = datetime.now()
 train_etl = {'ad'     : (lambda l : l['AdID']),
