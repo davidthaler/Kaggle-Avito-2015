@@ -41,22 +41,14 @@ search_etl = {'user'    : (lambda l : l['UserID']),
 # use_train = True
 input = rolling_join(True, train_etl, search_etl)
 model = ftrl_proximal(alpha, beta, L1, L2, D, interaction)
-loss1 = 0.0
-loss2 = 0.0
 for (k, (x, y)) in enumerate(input):
   f = hash_features(x, D)
   p = model.predict(f)
-  loss1 += logloss(p, y)
   model.update(f, p, y)
   if k == maxlines:
     break
   if (k + 1) % 1000000 == 0:
     print 'processed %d lines' % (k + 1)
-    loss2 += loss1
-    print 'loss (last 1M rows): %.5f' % (loss1/1000000)
-    print 'loss (total avg)   : %.5f' % (loss2/(k + 1)
-    print '--------------'
-    loss1 = 0.0
 print 'finished training'
 
 # testing: use_train=False
