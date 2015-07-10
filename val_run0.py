@@ -27,7 +27,8 @@ input = avito2_io.rolling_join(True,
                                val_ids=val_ids)
 loss = 0.0
 for (k, (x, y)) in enumerate(input):
-  loss += logloss(float(x['ctr']), y)
+  #loss += logloss(float(x['ctr']), y)
+  loss += logloss(0.006, y)
   if k == maxlines_val:
     break
   if (k + 1) % 250000 == 0:

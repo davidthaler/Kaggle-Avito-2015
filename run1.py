@@ -22,7 +22,7 @@ submission = os.path.join(SUBMIT, 'submission%d.csv' % SUBMIT_NUM)
 alpha = 0.1       # learning rate
 beta = 1.0         # smoothing parameter, probably doesn't matter on big data
 L1 = 0.0000        # l1-regularization
-L2 = 1.0000        # l2-regularization
+L2 = 0.1000        # l2-regularization
 D = 2**26          # feature space size
 interaction = False
 maxlines = None
@@ -36,8 +36,8 @@ search_etl = {'user'    : (lambda l : l['UserID']),
               'category': (lambda l : l['CategoryID']),
               'location': (lambda l : l['LocationID']),
               'logon'   : (lambda l : l['IsUserLoggedOn']),
-              'SPexists': (lambda l : str(int(len(l['SearchParams']) > 0))),
-              'SQexists': (lambda l : str(int(len(l['SearchQuery']) > 0)))}
+              'SPexists': (lambda l : int(len(l['SearchParams']) > 0)),
+              'SQexists': (lambda l : int(len(l['SearchQuery']) > 0))}
 # use_train = True
 input = rolling_join(True, train_etl, search_etl)
 model = ftrl_proximal(alpha, beta, L1, L2, D, interaction)
