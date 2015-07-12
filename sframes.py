@@ -22,7 +22,7 @@ def load(infile):
   return:
     the SFrame stored at GL_DATA/infile  
   '''
-  path = os.join(GL_DATA, infile)
+  path = os.path.join(GL_DATA, infile)
   return gl.load_sframe(path)
   
   
