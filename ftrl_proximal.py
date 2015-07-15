@@ -63,11 +63,12 @@ class ftrl_proximal(object):
                     # one-hot encode interactions with hash trick
                     yield abs(hash(str(x[i]) + '_' + str(x[j]))) % D
 
-    def predict(self, x):
+    def predict(self, x, prob=True):
         ''' Get probability estimation on x
 
             INPUT:
                 x: features
+                prob: if True, return a probability, else return decision value
 
             OUTPUT:
                 probability of p(y = 1 | x; w)
@@ -103,9 +104,11 @@ class ftrl_proximal(object):
 
         # cache the current w for update stage
         self.w = w
-
-        # bounded sigmoid function, this is the probability estimation
-        return 1. / (1. + exp(-max(min(wTx, 35.), -35.)))
+        if prob:
+            # bounded sigmoid function, this is the probability estimation
+            return 1. / (1. + exp(-max(min(wTx, 35.), -35.)))
+        else:
+            return wTx
 
     def update(self, x, p, y):
         ''' Update model using x, p, y
