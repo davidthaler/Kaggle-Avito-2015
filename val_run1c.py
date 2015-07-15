@@ -4,6 +4,9 @@ in the predictions by adjusting the offset. It does this naively, by pulling
 all of the rows and rejecting the unused ones, so it is only slightly faster.
 Its log-loss was higher by about 0.0001 when negatives were down sampled 95%.
 
+NB: the most important line here is the offset calculation between the
+training and validation passes.
+
 author: David Thaler
 date: July 2015
 '''
