@@ -1,7 +1,8 @@
 '''
-This script implements a full-data run of the ftrl-proximal model using 
-data pulled by avito2_io.join_with_ads(), with validation (no test).
-This only runs one epoch (~200M rows).
+This script tests out downsampling of the negative rows and compensating
+in the predictions by adjusting the offset. It does this naively, by pulling
+all of the rows and rejecting the unused ones, so it is only slightly faster.
+Its log-loss was higher by about 0.0001 when negatives were down sampled 95%.
 
 author: David Thaler
 date: July 2015
