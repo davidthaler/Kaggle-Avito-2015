@@ -85,6 +85,32 @@ def write_all():
   write('SearchInfo.tsv', 'search.gl', hints=hints)
   
   
+def context_ads():
+  '''
+  This function records how context_ads.gl (at GL_DATA/) was created. 
+  It requires that write_all was called earlier.
+  '''
+  ads = load('ads.gl')
+  ctx = ads[ads['IsContext']]
+  del ctx['IsContext']
+  del ctx['LocationID']
+  path = os.path.join(GL_DATA, 'context_ads.gl')
+  ctx.save(path)
+
+
+def train_context():
+  '''
+  This function records how train_context.gl was created.
+  ObjectType == 3 means that a row is a context ad, so we
+  retain it.
+  '''
+  tr = load('train.gl')
+  tr = tr[tr['ObjectType'] == 3]
+  del tr['ObjectType']
+  path = os.path.join(GL_DATA, 'train_context.gl')
+  tr.save(path)
+
+
 if __name__ == '__main__':
   write_all()
 
