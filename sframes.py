@@ -94,6 +94,7 @@ def context_ads():
   ctx = ads[ads['IsContext']]
   del ctx['IsContext']
   del ctx['LocationID']
+  ctx['Price'] = ctx['Price'].fillna(0)
   path = os.path.join(GL_DATA, 'context_ads.gl')
   ctx.save(path)
 
@@ -112,7 +113,7 @@ def train_context():
 
 
 if __name__ == '__main__':
-  write_all()
+  context_ads()
 
 
 
