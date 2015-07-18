@@ -6,6 +6,7 @@ date: July 2015
 '''
 import avito2_io
 import gl_iter
+import sframes
 from ftrl_proximal import ftrl_proximal
 from hash_features import hash_features
 from datetime import datetime
@@ -16,13 +17,16 @@ import pdb
 
 alpha = 0.1        # learning rate
 beta = 1.0         # smoothing parameter, probably doesn't matter on big data
-L1 = 0.0000        # l1-regularization
-L2 = 0.1000        # l2-regularization
+L1 = 0.0001        # l1-regularization
+L2 = 0.0010        # l2-regularization
 D = 2**26          # feature space size
 interaction = False
-maxlines_train = 1000000
-maxlines_val = 100000
+maxlines_train = None
+maxlines_val = None
 MIN_LEN = 4
+# This is (# rows in train_context) - (# rows in val_context).
+# It is the # of rows train_ds was drawn from.
+TRAIN_ONLY_ROWS = 184967172.0
 
 def process_line(line):
   '''
@@ -60,12 +64,11 @@ def process_line(line):
   del line['SearchParams']
   
 start = datetime.now()
-val_ids = avito2_io.get_artifact('full_val_set.pkl')
-it = gl_iter.basic_join()
+tr = sframes.load('train_ds.gl')
+si = sframes.load('search_ds.gl')
+it = gl_iter.basic_join(tr, si)
 model = ftrl_proximal(alpha, beta, L1, L2, D, interaction)
 for (k, line) in enumerate(it):
-  if line['SearchID'] in val_ids:
-    continue
   y = line.pop('IsClick')
   process_line(line)
   f = hash_features(line, D)
@@ -77,24 +80,30 @@ for (k, line) in enumerate(it):
     print 'processed %d lines on training pass' % (k + 1)
 print 'finished training'
 
-it = gl_iter.basic_join()
+# Sample bias adjustment
+n_click_tr = float(tr['IsClick'].sum())
+p_all = n_click_tr / TRAIN_ONLY_ROWS
+p_sample = n_click_tr / tr.shape[0]
+offset = log(p_all/(1.0 - p_all)) - log(p_sample/ (1.0 - p_sample))
+
+val = sframes.load('val_context.gl')
+si  = sframes.load('search_val.gl')
+it = gl_iter.basic_join(val, si)
 loss = 0.0
-count = 0
 for (k, line) in enumerate(it):
-  if line['SearchID'] not in val_ids:
-    continue
-  count += 1 
   y = line.pop('IsClick')
   process_line(line)
   f = hash_features(line, D)
-  p = model.predict(f)
+  dv = model.predict(f, False)
+  dv += offset
+  p = 1.0/(1.0 + exp(-dv))
   loss += logloss(p, y)
-  if count == maxlines_val:
+  if k == maxlines_val:
     break
-  if (count + 1) % 10000 == 0:
-    print 'processed %d lines from validation set' % (count + 1)
+  if (k + 1) % 1000000 == 0:
+    print 'processed %d lines from validation set' % (k + 1)
 
-print 'validation loss: %.5f on %d rows' % (loss/count, count)
+print 'validation loss: %.5f on %d rows' % (loss/k, k)
 print 'elapsed time: %s' % (datetime.now() - start)
 
 
