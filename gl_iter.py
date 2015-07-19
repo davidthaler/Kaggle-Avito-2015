@@ -29,8 +29,6 @@ def basic_join(tss, si):
   generates:
     a dict that combines all of the fields from tss, si and ads for a row
   '''
-  #tss = sframes.load('train_context.gl')
-  #si = sframes.load('search.gl')
   ctx = sframes.load('context_ads.gl')
   ctx = sframe_to_dict('AdID', ctx)
   si_it = iter(si)
