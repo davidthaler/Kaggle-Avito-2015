@@ -9,9 +9,10 @@ import gl_iter
 import sframes
 from ftrl_proximal import ftrl_proximal
 from hash_features import hash_features
-from datetime import datetime
 from eval import logloss
+from datetime import datetime
 from math import log, exp, ceil
+import os
 import argparse
 import pdb
 
@@ -46,7 +47,7 @@ def process_line(line):
   sq = line['SearchQuery']
   title = line['Title']
   if len(title) > MIN_LEN_STR and len(sq) > MIN_LEN_STR:
-    line['sq_in_title'] = (title.find(sq) > 0)
+    line['sq_in_title'] = (title.lower().find(sq.lower()) > 0)
     
   # These have been unpacked already
   del line['Params']
@@ -68,7 +69,7 @@ def train(tr, si, alpha, beta, L1, L2, D, interaction, maxlines):
   return model
 
 
-def compute_offset(tr):
+def compute_offset(tr, maxlines):
   '''
   Using down sampled negative biases the mean prediction. This function
   computes an adjustment to correct that bias.
@@ -83,10 +84,15 @@ def compute_offset(tr):
   # It is the # of rows train_ds was down-sampled from.
   TRAIN_ONLY_ROWS = 184967172.0
   
-  n_click_tr = float(tr['IsClick'].sum())
+  if maxlines:
+    n_click_tr = float(tr[:maxlines]['IsClick'].sum())
+  else:
+    n_click_tr = float(tr['IsClick'].sum())
   p_all = n_click_tr / TRAIN_ONLY_ROWS
   p_sample = n_click_tr / tr.shape[0]
-  return log(p_all/(1.0 - p_all)) - log(p_sample/ (1.0 - p_sample))
+  offset = log(p_all/(1.0 - p_all)) - log(p_sample/ (1.0 - p_sample))
+  print 'Offset: %.5f' % offset
+  return offset
   
 
 def validate(val, si, offset, maxlines):
@@ -105,6 +111,20 @@ def validate(val, si, offset, maxlines):
     if (k + 1) % 1000000 == 0:
       print 'processed %d lines from validation set' % (k + 1)
   return loss/k, k
+
+
+def run_test(submission_file, test, si, offset):
+  it = gl_iter.basic_join(test, si)
+  for (k, line) in enumerate(it):
+    id = line.pop('ID')
+    process_line(line)
+    f = hash_features(line, D)
+    dv = model.predict(f, False)
+    dv += offset
+    p = 1.0/(1.0 + exp(-dv))
+    submission_file.write('%d,%s\n' % (id, str(p)))
+    if (k + 1) % 1000000 == 0:
+      print 'processed %d lines' % (k + 1)
 
 
 if __name__ == '__main__':
@@ -143,13 +163,21 @@ if __name__ == '__main__':
                 False, 
                 args.maxlines)
   print 'finished training'
-  offset = compute_offset(tr)
+  offset = compute_offset(tr, args.maxlines)
   
-  # for now, just to get things running, we'll just validate
-  val = sframes.load('val_context.gl')
-  si  = sframes.load('search_val.gl')
-  mean_loss, nrows = validate(val, si, offset, args.maxlines_val)
-  print 'validation loss: %.5f on %d rows' % (mean_loss, nrows)
+  if args.sub:
+    submit_name = 'submission%s.csv' % str(args.sub)
+    submit_path = os.path.join(avito2_io.SUBMIT, submit_name)
+    test = sframes.load('test_context.gl')
+    si = sframes.load('search_test.gl')
+    with open(submit_path, 'w') as sub_file:
+      sub_file.write('ID,IsClick\n')
+      run_test(sub_file, test, si, offset)
+  else:
+    val = sframes.load('val_context.gl')
+    si  = sframes.load('search_val.gl')
+    mean_loss, nrows = validate(val, si, offset, args.maxlines_val)
+    print 'validation loss: %.5f on %d rows' % (mean_loss, nrows)
   print 'elapsed time: %s' % (datetime.now() - start)
 
 
