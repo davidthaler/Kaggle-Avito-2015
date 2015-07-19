@@ -14,11 +14,11 @@ import pdb
 
 def basic_join(tss, si):
   '''
-  A generator that performs a rolling join over train_context.gl and search.gl, 
-  which are graphlab binary files storing trainSearchStream.tsv 
-  (after removal of ads other than context ads) and SearchInfo.tsv, respectively.
-  SFrame context_ads.gl, which has the contextual ads from AdsInfo.tsv, is
-  also joined in.
+  A generator that performs a rolling join over Graphlab SFrames tss, which
+  stores data from train/testSearchStream.tsv and si, which is from 
+  SearchInfo.tsv. SFrame context_ads.gl, which has the contextual ads from 
+  AdsInfo.tsv, is loaded and joined in. UserInfo.tsv is joined in from loading
+  the artifact user_dict.pkl from artifacts/.
   
   args:
     tss - an SFrame with data from trainSearchStream or testSearchStream, 
@@ -30,38 +30,24 @@ def basic_join(tss, si):
     a dict that combines all of the fields from tss, si and ads for a row
   '''
   ctx = sframes.load('context_ads.gl')
-  ctx = sframe_to_dict('AdID', ctx)
+  ctx = sframes.sframe_to_dict('AdID', ctx)
+  user = avito2_io.get_artifact('user_dict.pkl')
   si_it = iter(si)
   si_line = si_it.next()
   for tss_line in tss:
     search_id = tss_line['SearchID']
     ad_id = tss_line['AdID']
+    user_id = si_line['UserID']
     while search_id != si_line['SearchID']:
       si_line = si_it.next()
     # Now the SearchIDs match
     tss_line.update(ctx[ad_id])
     # SearchInfo.CategoryID overwrites AdInfo.CategoryID in this line
     tss_line.update(si_line)
+    if user_id in user:
+      tss_line.update(user[user_id])
     yield tss_line
   
-  
-def sframe_to_dict(key_field, sframe):
-  '''
-  Converts the rows of a graphlab SFrame to a dict of dicts of the form:
-    {id : {field_name: field_value, ...}}
-  
-  args:
-    id - the name of the field to use as the dictionary key
-    sframe - the Graphlab SFrame to get the dict entries out of
-    
-  return:
-    a dict like {id:{field_name:field_value, ...}}
-  '''
-  d = {}
-  for row in sframe:
-    id = row.pop(key_field)
-    d[id] = row
-  return d
 
 
 
