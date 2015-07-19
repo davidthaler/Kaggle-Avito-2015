@@ -48,7 +48,17 @@ def process_line(line):
   title = line['Title']
   if len(title) > MIN_LEN_STR and len(sq) > MIN_LEN_STR:
     line['sq_in_title'] = (title.lower().find(sq.lower()) > 0)
-    
+
+  line['SQexists'] = len(sq) > 0
+  line['SPexists'] = sp is not None
+  line['SPEcat'] = line['CategoryID'] + 0.1 * line['SPexists']
+  line['SQEcat'] = line['CategoryID'] + 0.1 * line['SQexists']
+  line['SPEad'] = line['AdID'] + 0.1 * line['SPexists']
+  line['SQEad'] = line['AdID'] + 0.1 * line['SQexists']
+  line['SQlen'] = round(log(1 + len(line['SearchQuery'])))
+  line['Adlen'] = round(log(1 + len(line['Title'])))
+  line['ad_pos'] = line['AdID'] + 0.1 * line['Position']
+  line['cat_pos'] = line['CategoryID'] + 0.1 * line['Position']
   # These have been unpacked already
   del line['Params']
   del line['SearchParams']
