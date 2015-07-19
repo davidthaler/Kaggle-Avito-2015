@@ -202,9 +202,43 @@ def search_test():
   si_test.save(path)
   print 'elapsed time: %s' % (datetime.now() - start)  
   
+
+def sframe_to_dict(key_field, sframe):
+  '''
+  Converts the rows of a graphlab SFrame to a dict of dicts of the form:
+    {id : {field_name: field_value, ...}}
   
+  args:
+    id - the name of the field to use as the dictionary key
+    sframe - the Graphlab SFrame to get the dict entries out of
+    
+  return:
+    a dict like {id:{field_name:field_value, ...}}
+  '''
+  d = {}
+  for row in sframe:
+    id = row.pop(key_field)
+    d[id] = row
+  return d
+  
+  
+def make_user_dict():
+  '''
+  Loads user.gl and creates a dict-of-dicts {int: dict} like:
+   {UserID: {other_fields:other_values}}
+   
+  Saves result at artifacts/user_dict.pkl. It can be loaded with 
+  avito2_io.get_artifact.
+  '''
+  start = datetime.now()
+  user = load('user.gl')
+  user_dict = sframe_to_dict('UserID', user)
+  avito2_io.put_artifact(user_dict, 'user_dict.pkl')
+  print 'elapsed time: %s' % (datetime.now() - start) 
+
+
 if __name__ == '__main__':
-  search_test()
+  make_user_dict()
 
 
 
