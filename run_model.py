@@ -184,9 +184,11 @@ if __name__ == '__main__':
   parser.add_argument('-n', '--maxlines_val',type=int, default=None,
         help='A max # lines for validation, if none, all data is used.')
   parser.add_argument('-s', '--sub', type=str,
-        help="None, 'counts' or 'full' - what user data to use")
+        help='Do test and write results at submissions/submission<sub>.csv')
   parser.add_argument('-u', '--users', type=str, default=None,
-        help='None or artifact name. If given, load user dict artifact.')
+        help="None, 'counts' or 'full' - what user data to use")
+  parser.add_argument('-a','--all', action='store_const', default=False, 
+        const=True, help='Full training run; use all training data.')
   args = parser.parse_args()
   if args.users=='full':
     users = build_user_dict()
@@ -197,9 +199,14 @@ if __name__ == '__main__':
   else:
     users = None
   D = 2**args.bits
-  # for now, we're just using *ds, because full data will take too long
-  tr = sframes.load('train_ds.gl')
-  si = sframes.load('search_ds.gl') 
+  if args.all:
+    tr = sframes.load('train_context.gl')
+    si = sframes.load('search.gl')
+    if not args.sub:
+      raise Warning('--all without --sub is not sensible.')
+  else:
+    tr = sframes.load('train_ds.gl')
+    si = sframes.load('search_ds.gl') 
   # no interactions; it'd take days
   model = train(tr, 
                 si, 
