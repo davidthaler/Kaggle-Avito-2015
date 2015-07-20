@@ -21,7 +21,8 @@ TEST = os.path.join(DATA, 'testSearchStream.tsv')
 SEARCH_INFO = os.path.join(DATA, 'SearchInfo.tsv')
 ADS_INFO = os.path.join(DATA, 'AdsInfo.tsv')
 SUBMIT = os.path.join(BASE, 'submissions')
-
+VISIT = os.path.join(DATA, 'VisitsStream.tsv.gz')
+PHONE = os.path.join(DATA, 'PhoneRequestsStream.tsv.gz')
 
 def join_with_ads(use_train, 
                   ads,
