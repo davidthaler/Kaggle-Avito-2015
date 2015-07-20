@@ -61,20 +61,31 @@ def process_line(line):
   line['Adlen'] = round(log(1 + len(line['Title'])))
   line['ad_pos'] = line['AdID'] + 0.1 * line['Position']
   line['cat_pos'] = line['CategoryID'] + 0.1 * line['Position']
+  if 'si_ct' in line:
+    # NB: these all exist if any of them do
+    line['log_si_ct'] = round(10.0 * log(1.0 + line['si_ct']))
+    line['log_vis_ct'] = round(10.0 * log(1.0 + line['vis_ct']))
+    line['log_ph_ct'] = round(10.0 * log(1.0 + line['ph_ct']))
+    line['ph_si_rat']  = round(1.0 * line['ph_ct'] / line['si_ct'], 2)
+    line['vis_si_rat'] = round(1.0 * line['vis_ct'] / line['si_ct'], 2)
+    line['ph_vis_rat'] = round(1.0 * line['ph_ct'] / max(1, line['vis_ct']), 2)
+  '''
   if 'UserAgentOSID' in line:
     line['osid_pos'] = line['UserAgentOSID'] + 0.1 * line['Position']
   if 'UserDeviceID' in line:
     line['udev_pos'] = line['UserDeviceID'] + 0.1 * line['Position']
   if 'UserAgentFamilyID' in line:
     line['ufam_pos'] = line['UserAgentFamilyID'] + 0.1 * line['Position']
-    
+  '''
   # These have been unpacked already
   del line['Params']
   del line['SearchParams']
   
   
-def train(tr, si, alpha, beta, L1, L2, D, interaction, maxlines):
-  it = gl_iter.basic_join(tr, si)
+def train(tr, si, alpha, beta, L1, 
+          L2, D, users=None, 
+          interaction=False, maxlines=None):
+  it = gl_iter.basic_join(tr, si, users)
   model = ftrl_proximal(alpha, beta, L1, L2, D, interaction)
   for (k, line) in enumerate(it):
     y = line.pop('IsClick')
@@ -115,8 +126,8 @@ def compute_offset(tr, maxlines):
   return offset
   
 
-def validate(val, si, offset, maxlines):
-  it = gl_iter.basic_join(val, si)
+def validate(val, si, users=None, offset=0, maxlines=None):
+  it = gl_iter.basic_join(val, si, users)
   loss = 0.0
   for (k, line) in enumerate(it):
     y = line.pop('IsClick')
@@ -133,8 +144,8 @@ def validate(val, si, offset, maxlines):
   return loss/k, k
 
 
-def run_test(submission_file, test, si, offset):
-  it = gl_iter.basic_join(test, si)
+def run_test(submission_file, test, si, users=None, offset=0):
+  it = gl_iter.basic_join(test, si, users)
   for (k, line) in enumerate(it):
     id = line.pop('ID')
     process_line(line)
@@ -168,7 +179,14 @@ if __name__ == '__main__':
         help='A max # lines for validation, if none, all data is used.')
   parser.add_argument('-s', '--sub', type=str,
         help='None or str. If given, predict on test and write submission.')
+  parser.add_argument('-u', '--users', type=str, default=None,
+        help='None or artifact name. If given, load user dict artifact.')
   args = parser.parse_args()
+  if args.users:
+    users = avito2_io.get_artifact(args.users)
+    print 'loading user_data from %s' % args.users
+  else:
+    users = None
   D = 2**args.bits
   # for now, we're just using *ds, because full data will take too long
   tr = sframes.load('train_ds.gl')
@@ -181,6 +199,7 @@ if __name__ == '__main__':
                 args.l1, 
                 args.l2, 
                 D, 
+                users,
                 False, 
                 args.maxlines)
   print 'finished training'
@@ -193,11 +212,11 @@ if __name__ == '__main__':
     si = sframes.load('search_test.gl')
     with open(submit_path, 'w') as sub_file:
       sub_file.write('ID,IsClick\n')
-      run_test(sub_file, test, si, offset)
+      run_test(sub_file, test, si, users, offset)
   else:
     val = sframes.load('val_context.gl')
     si  = sframes.load('search_val.gl')
-    mean_loss, nrows = validate(val, si, offset, args.maxlines_val)
+    mean_loss, nrows = validate(val, si, users, offset, args.maxlines_val)
     print 'validation loss: %.5f on %d rows' % (mean_loss, nrows)
   print 'elapsed time: %s' % (datetime.now() - start)
 
