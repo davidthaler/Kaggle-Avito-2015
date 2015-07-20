@@ -12,7 +12,7 @@ import avito2_io
 import pdb
 
 
-def basic_join(tss, si, user={}):
+def basic_join(tss, si, user):
   '''
   A generator that performs a rolling join over Graphlab SFrames tss, which
   stores data from train/testSearchStream.tsv and si, which is from 
@@ -25,8 +25,8 @@ def basic_join(tss, si, user={}):
         including samples or validation sets
     si - an SFrame with data from SearchInfo. Must have all of the SearchIDs
         in tss, but it can be a sample
-    user - default {} (empty dict). A dict from UserID to a dict of features
-        for that user. Caller should construct this if used.
+    user -  dict or None. A dict from UserID to a dict of features for 
+        that user. Caller should construct this if used.
         
   generates:
     a dict that combines all of the fields from tss, si and ads for a row
@@ -45,7 +45,7 @@ def basic_join(tss, si, user={}):
     tss_line.update(ctx[ad_id])
     # SearchInfo.CategoryID overwrites AdInfo.CategoryID in this line
     tss_line.update(si_line)
-    if user_id in user:
+    if user is not None and user_id in user:
       tss_line.update(user[user_id])
     yield tss_line
   
