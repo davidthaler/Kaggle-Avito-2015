@@ -69,14 +69,15 @@ def process_line(line):
     line['ph_si_rat']  = round(1.0 * line['ph_ct'] / line['si_ct'], 2)
     line['vis_si_rat'] = round(1.0 * line['vis_ct'] / line['si_ct'], 2)
     line['ph_vis_rat'] = round(1.0 * line['ph_ct'] / max(1, line['vis_ct']), 2)
-  '''
+
+  # These are present when -u full
   if 'UserAgentOSID' in line:
     line['osid_pos'] = line['UserAgentOSID'] + 0.1 * line['Position']
   if 'UserDeviceID' in line:
     line['udev_pos'] = line['UserDeviceID'] + 0.1 * line['Position']
   if 'UserAgentFamilyID' in line:
     line['ufam_pos'] = line['UserAgentFamilyID'] + 0.1 * line['Position']
-  '''
+    
   # These have been unpacked already
   del line['Params']
   del line['SearchParams']
@@ -158,6 +159,11 @@ def run_test(submission_file, test, si, users=None, offset=0):
       print 'processed %d lines' % (k + 1)
 
 
+def build_user_dict():
+  users = avito2_io.get_artifact('user_counts.pkl')
+  users.update(avito2_io.get_artifact('user_dict.pkl'))
+  return users
+
 if __name__ == '__main__':
   start = datetime.now()
   print 'running at: ' + str(start)
@@ -178,13 +184,16 @@ if __name__ == '__main__':
   parser.add_argument('-n', '--maxlines_val',type=int, default=None,
         help='A max # lines for validation, if none, all data is used.')
   parser.add_argument('-s', '--sub', type=str,
-        help='None or str. If given, predict on test and write submission.')
+        help="None, 'counts' or 'full' - what user data to use")
   parser.add_argument('-u', '--users', type=str, default=None,
         help='None or artifact name. If given, load user dict artifact.')
   args = parser.parse_args()
-  if args.users:
-    users = avito2_io.get_artifact(args.users)
-    print 'loading user_data from %s' % args.users
+  if args.users=='full':
+    users = build_user_dict()
+    print 'loading full user data'
+  elif args.users=='counts':
+    users = avito2_io.get_artifact('user_counts.pkl')
+    print 'loading user counts only from user_counts.pkl'
   else:
     users = None
   D = 2**args.bits
