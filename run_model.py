@@ -41,6 +41,8 @@ def process_line(line):
   if ap is not None and sp is not None:
     i_keys = set(ap.keys()).intersection(set(sp.keys()))
     i_kvs  = set(ap.items()).intersection(set(ap.items()))
+    diff = {'df_' + str(k):sp[k]+ap[k] for k in sp if k in ap and ap[k] != sp[k]}
+    line.update(diff)
     line.update({('i_key' + str(k)) : 1 for k in i_keys})
     line.update({('i_kvs' + str(kv[0])) : kv[1] for kv in i_kvs})
     
@@ -59,9 +61,17 @@ def process_line(line):
   line['Adlen'] = round(log(1 + len(line['Title'])))
   line['ad_pos'] = line['AdID'] + 0.1 * line['Position']
   line['cat_pos'] = line['CategoryID'] + 0.1 * line['Position']
+  if 'UserAgentOSID' in line:
+    line['osid_pos'] = line['UserAgentOSID'] + 0.1 * line['Position']
+  if 'UserDeviceID' in line:
+    line['udev_pos'] = line['UserDeviceID'] + 0.1 * line['Position']
+  if 'UserAgentFamilyID' in line:
+    line['ufam_pos'] = line['UserAgentFamilyID'] + 0.1 * line['Position']
+    
   # These have been unpacked already
   del line['Params']
   del line['SearchParams']
+  
   
 def train(tr, si, alpha, beta, L1, L2, D, interaction, maxlines):
   it = gl_iter.basic_join(tr, si)
@@ -74,7 +84,7 @@ def train(tr, si, alpha, beta, L1, L2, D, interaction, maxlines):
     model.update(f, p, y)
     if k == maxlines:
       break
-    if (k + 1) % 1000000 == 0:
+    if (k + 1) % 250000 == 0:
       print 'processed %d lines on training pass' % (k + 1)
   return model
 
@@ -118,7 +128,7 @@ def validate(val, si, offset, maxlines):
     loss += logloss(p, y)
     if k == maxlines:
       break
-    if (k + 1) % 1000000 == 0:
+    if (k + 1) % 250000 == 0:
       print 'processed %d lines from validation set' % (k + 1)
   return loss/k, k
 
@@ -133,12 +143,13 @@ def run_test(submission_file, test, si, offset):
     dv += offset
     p = 1.0/(1.0 + exp(-dv))
     submission_file.write('%d,%s\n' % (id, str(p)))
-    if (k + 1) % 1000000 == 0:
+    if (k + 1) % 250000 == 0:
       print 'processed %d lines' % (k + 1)
 
 
 if __name__ == '__main__':
   start = datetime.now()
+  print 'running at: ' + str(start)
   parser = argparse.ArgumentParser(description=
         'Runs ftrl-proximal model on data from gl_iter.basic_join')
   parser.add_argument('--alpha', type=float, default=0.1,
