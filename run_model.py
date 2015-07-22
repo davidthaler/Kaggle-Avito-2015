@@ -85,19 +85,21 @@ def process_line(line):
   
 def train(tr, si, alpha, beta, L1, 
           L2, D, users=None, 
-          interaction=False, maxlines=None):
-  it = gl_iter.basic_join(tr, si, users)
+          interaction=False, maxlines=None,
+          iterations=1):
   model = ftrl_proximal(alpha, beta, L1, L2, D, interaction)
-  for (k, line) in enumerate(it):
-    y = line.pop('IsClick')
-    process_line(line)
-    f = hash_features(line, D)
-    p = model.predict(f)
-    model.update(f, p, y)
-    if k == maxlines:
-      break
-    if (k + 1) % 250000 == 0:
-      print 'processed %d lines on training pass' % (k + 1)
+  for j in range(iterations):
+    it = gl_iter.basic_join(tr, si, users)
+    for (k, line) in enumerate(it):
+      y = line.pop('IsClick')
+      process_line(line)
+      f = hash_features(line, D)
+      p = model.predict(f)
+      model.update(f, p, y)
+      if k == maxlines:
+        break
+      if (k + 1) % 250000 == 0:
+        print 'processed %d lines on training pass %d' % (k + 1, j + 1)
   return model
 
 
@@ -189,6 +191,8 @@ if __name__ == '__main__':
         help="None, 'counts' or 'full' - what user data to use")
   parser.add_argument('-a','--all', action='store_const', default=False, 
         const=True, help='Full training run; use all training data.')
+  parser.add_argument('-p', '--passes',type=int, default=1,
+        help='# of passes over training data.')
   args = parser.parse_args()
   if args.users=='full':
     users = build_user_dict()
@@ -217,9 +221,14 @@ if __name__ == '__main__':
                 D, 
                 users,
                 False, 
-                args.maxlines)
+                args.maxlines,
+                args.passes)
   print 'finished training'
-  offset = compute_offset(tr, args.maxlines)
+  
+  if args.all:
+    offset = 0.0
+  else:
+    offset = compute_offset(tr, args.maxlines)
   
   if args.sub:
     submit_name = 'submission%s.csv' % str(args.sub)
