@@ -6,12 +6,45 @@ author: David Thaler
 date: July 2015
 '''
 import graphlab as gl
+from graphlab import aggregate as agg
 import os
 import avito2_io
 from datetime import datetime
 from random import random
+import pdb
 
 GL_DATA = os.path.join(avito2_io.DATA, 'graphlab')
+
+def user_agg(si=None):
+  '''
+  Loads search.gl and aggregates it by UserID to get some features.
+  '''
+  start = datetime.now()
+  if si is None:
+    si = load('search.gl')
+  D = 2**20
+  si['SQexists'] = si['SearchQuery'].apply(lambda s : s != '')
+  si['SQhash']   = si['SearchQuery'].apply(lambda s : abs(hash(s)) % D)
+  si['SPexists'] = si['SearchParams'].apply(lambda d : d is not None)
+  
+  f = {'pctSQE'      : agg.AVG('SQexists'),
+       'pctSPE'      : agg.AVG('SPexists'),
+       'numSearches' : agg.COUNT(),
+       'allCat'      : agg.CONCAT('CategoryID'),
+       'allSQ'       : agg.CONCAT('SQhash')}
+       
+  si = si[['UserID', 
+           'CategoryID', 
+           'SearchParams', 
+           'SQexists', 
+           'SPexists', 
+           'SQhash']]
+  usr = si.groupby('UserID', f)
+  usr['allSQ']  = usr['allSQ'].apply(lambda l : list(set(l)))
+  usr['allCat'] = usr['allCat'].apply(lambda l : list(set(l)))
+  usr_dict = sframe_to_dict('UserID', usr)
+  avito2_io.put_artifact(usr_dict, 'user_si.pkl')
+  print 'elapsed time: %s' % (datetime.now() - start)
 
 
 def load(infile):
@@ -238,7 +271,7 @@ def make_user_dict():
 
 
 if __name__ == '__main__':
-  make_user_dict()
+  user_agg()
 
 
 
