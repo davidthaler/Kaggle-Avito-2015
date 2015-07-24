@@ -23,6 +23,10 @@ def process_line(line):
   '''
   MIN_LEN_STR = 4
   del line['SearchID']
+  dt = avito2_io.convert_date(line['SearchDate'])
+  line['hour'] = dt.hour
+  line['wkday'] = dt.weekday()
+  line['day'] = 30 * dt.month + dt.day
   del line['SearchDate']
   line['HistCTR'] = -10 * round(log(float(line['HistCTR'])), 1)
   line['Price'] =  ceil(float(line['Price'])/100.)
@@ -53,6 +57,7 @@ def process_line(line):
 
   line['SQexists'] = len(sq) > 0
   line['SPexists'] = sp is not None
+  line['BothExist'] = line['SQexists'] and line['SPexists']
   line['SPEcat'] = line['CategoryID'] + 0.1 * line['SPexists']
   line['SQEcat'] = line['CategoryID'] + 0.1 * line['SQexists']
   line['SPEad'] = line['AdID'] + 0.1 * line['SPexists']
@@ -61,23 +66,6 @@ def process_line(line):
   line['Adlen'] = round(log(1 + len(line['Title'])))
   line['ad_pos'] = line['AdID'] + 0.1 * line['Position']
   line['cat_pos'] = line['CategoryID'] + 0.1 * line['Position']
-  if 'si_ct' in line:
-    # NB: these all exist if any of them do
-    line['log_si_ct'] = round(10.0 * log(1.0 + line['si_ct']))
-    line['log_vis_ct'] = round(10.0 * log(1.0 + line['vis_ct']))
-    line['log_ph_ct'] = round(10.0 * log(1.0 + line['ph_ct']))
-    line['ph_si_rat']  = round(1.0 * line['ph_ct'] / line['si_ct'], 2)
-    line['vis_si_rat'] = round(1.0 * line['vis_ct'] / line['si_ct'], 2)
-    line['ph_vis_rat'] = round(1.0 * line['ph_ct'] / max(1, line['vis_ct']), 2)
-
-  # These are present when -u full
-  if 'UserAgentOSID' in line:
-    line['osid_pos'] = line['UserAgentOSID'] + 0.1 * line['Position']
-  if 'UserDeviceID' in line:
-    line['udev_pos'] = line['UserDeviceID'] + 0.1 * line['Position']
-  if 'UserAgentFamilyID' in line:
-    line['ufam_pos'] = line['UserAgentFamilyID'] + 0.1 * line['Position']
-    
   # These have been unpacked already
   del line['Params']
   del line['SearchParams']
@@ -200,6 +188,9 @@ if __name__ == '__main__':
   elif args.users=='counts':
     users = avito2_io.get_artifact('user_counts.pkl')
     print 'loading user counts only from user_counts.pkl'
+  elif args.users == 'si':
+    users = avito2_io.get_artifact('user_si.pkl')
+    print 'loading user dict from user_si.pkl'
   else:
     users = None
   D = 2**args.bits
