@@ -31,7 +31,7 @@ def vw_train(data_file,
              passes=None, 
              model_file=None,
              learn_rate=0.1,
-             holdout=True,
+             holdout=False,
              other=None):
   """
   Function programmatically calls VW for training.
