@@ -5,19 +5,97 @@ were created. It also loads them.
 author: David Thaler
 date: July 2015
 '''
+import numpy as np
+import pandas as pd
 import graphlab as gl
 from graphlab import aggregate as agg
-import os
 import avito2_io
+import os
 from datetime import datetime
 from random import random
+from math import log
 import pdb
 
+
 GL_DATA = os.path.join(avito2_io.DATA, 'graphlab')
+
+def add_feature():
+  '''
+  Adds one feature on combo as a separate frame.
+  It can be added with add_column.
+  The feature is 'has this user seen this ad already today?
+  '''
+  combo = load('combo.gl')
+  combo = combo[['UserID', 'AdID', 'runDay']]
+  out = []
+  for k in range(26):
+    print 'running day %d' % k
+    s = set()
+    df = combo[combo['runDay'] == k].to_dataframe()
+    for t in df.itertuples():
+      # 4-tuple like (rowID, UserID, AdID, runDay)
+      out.append(t[1:3] in s)
+      s.add(t[1:3])
+  # use SFrame so we could add features to 
+  out = gl.SFrame({'seenToday' : out })
+  path = os.path.join(GL_DATA, 'extras.gl')
+  out.save(path)
+  
+
+def build_combo():
+  '''
+  Builds a combo SFrame, with test and train, joined to search,
+  sorted by date, with some of the features added.
+  '''
+  start = datetime.now()
+  print 'concatenating train_context.gl and test_context.gl'
+  tr = load('train_context.gl')
+  test = load('test_context.gl')
+  tr['isTest'] = 0
+  test['isTest'] = 1
+  tr['ID'] = -1
+  test['IsClick'] = -1
+  both = tr.append(test)
+  both['HistCTR'] = both['HistCTR'].apply(lambda x : round(log(x), 1))
+  
+  print 'modifying search.gl'
+  si = load('search.gl')
+  ds = load('train_ds.gl')
+  ds_ids = set(ds['SearchID'])
+  val_ids = avito2_io.get_artifact('full_val_set.pkl')
+  
+  si['isDS'] = si['SearchID'].apply(lambda id : id in ds_ids)
+  si['isVal'] = si['SearchID'].apply(lambda id : id in val_ids)
+  print 'converting datetimes'
+  si['dt'] = si['SearchDate'].str_to_datetime()
+  # produces a 0-based running day (0-25) from 4/25 to 5/20
+  si['runDay'] = si['dt'].apply(lambda dt : (dt.month - 4) * 30 + dt.day - 25)
+  del si['SearchDate']
+  si['sqe'] = si['SearchQuery'].apply(lambda sq : len(sq) > 0)
+  si['spe'] = si['SearchParams'].apply(lambda sp : sp is not None)
+  si['spsq'] = si['sqe'] * si['spe']
+  si['spe_cat'] = si['CategoryID'] + 0.1 * si['spe']
+  si['sqe_cat'] = si['CategoryID'] + 0.1 * si['sqe']
+  si['sq_len'] = si['SearchQuery'].apply(lambda x : len(x)/3)
+  
+  print 'joining'
+  combo = si.join(both)
+  combo['cat_pos'] = combo['CategoryID'] + 0.1 * combo['Position']
+  combo['sqe_pos'] = combo['sqe'] + 0.1 * combo['Position']
+  combo['spe_pos'] = combo['spe'] + 0.1 * combo['Position']
+  
+  print 'sorting'
+  combo = combo.sort('dt')
+  print 'saving'
+  path = os.path.join(GL_DATA, 'combo.gl')
+  combo.save(path)
+  print 'elapsed time: %s' % (datetime.now() - start) 
+
 
 def user_agg(si=None):
   '''
   Loads search.gl and aggregates it by UserID to get some features.
+  NB: this did not help.
   '''
   start = datetime.now()
   if si is None:
@@ -271,7 +349,7 @@ def make_user_dict():
 
 
 if __name__ == '__main__':
-  user_agg()
+  build_combo()
 
 
 
