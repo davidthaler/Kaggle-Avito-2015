@@ -32,12 +32,14 @@ def process_line(line):
   line['Price'] =  ceil(float(line['Price'])/100.)
   ap = line['Params']
   if ap is not None:
+    line['APlen'] = len(ap)
     ad_keys = {('ad_key' + str(k)) : 1 for k in ap}
     ad_kvs  = {('ad_kvs' + str(k)) : ap[k] for k in ap}
     line.update(ad_keys)
     line.update(ad_kvs)
   sp = line['SearchParams']
   if sp is not None:
+    line['SPlen'] = len(sp)
     sp_keys = {('sp_key' + str(k)) : 1 for k in sp}
     sp_kvs  = {('sp_kvs' + str(k)) : sp[k] for k in sp}
     line.update(sp_keys)
@@ -46,6 +48,9 @@ def process_line(line):
     i_keys = set(ap.keys()).intersection(set(sp.keys()))
     i_kvs  = set(ap.items()).intersection(set(ap.items()))
     diff = {'df_' + str(k):sp[k]+ap[k] for k in sp if k in ap and ap[k] != sp[k]}
+    line['i_k_len']  = len(i_keys)
+    line['i_kv_len'] = len(i_kvs)
+    line['diff_len'] = len(diff)
     line.update(diff)
     line.update({('i_key' + str(k)) : 1 for k in i_keys})
     line.update({('i_kvs' + str(kv[0])) : kv[1] for kv in i_kvs})
