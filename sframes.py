@@ -16,30 +16,80 @@ from random import random
 from math import log
 import pdb
 
+# DO NOT USE isDS. It is incorrect!
+
 
 GL_DATA = os.path.join(avito2_io.DATA, 'graphlab')
 
 def add_feature():
   '''
-  Adds one feature on combo as a separate frame.
-  It can be added with add_column.
-  The feature is 'has this user seen this ad already today?
+  Adds features (0/1):
+    Has this user seen this ad so far today?
+    Has this user clicked on anything so far today?
+    Has this user clicked on this ad so far today?
   '''
   combo = load('combo.gl')
-  combo = combo[['UserID', 'AdID', 'runDay']]
-  out = []
+  combo = combo[['UserID', 'AdID', 'IsClick','runDay']]
+  adseen = []
+  userclick = []
+  adclick = []
   for k in range(26):
     print 'running day %d' % k
-    s = set()
+    st = set()
+    uc = set()
+    ac = set()
     df = combo[combo['runDay'] == k].to_dataframe()
     for t in df.itertuples():
-      # 4-tuple like (rowID, UserID, AdID, runDay)
-      out.append(t[1:3] in s)
-      s.add(t[1:3])
-  # use SFrame so we could add features to 
-  out = gl.SFrame({'seenToday' : out })
-  path = os.path.join(GL_DATA, 'extras.gl')
+      # 5-tuple like (rowID, UserID, AdID, IsClick, runDay)
+      (uid, adid, click) = t[1:4]
+      adseen.append((uid, adid) in st)
+      userclick.append(uid in uc)
+      adclick.append((uid, adid) in ac)
+      st.add((uid, adid))
+      if click:
+        uc.add(uid)
+        ac.add((uid, adid))
+  out = gl.SFrame({'seenToday' : adseen, 
+                   'user_clicked_today': userclick, 
+                   'user_clicked_ad_today' : adclick})
+  path = os.path.join(GL_DATA, 'extras2.gl')
   out.save(path)
+  
+  
+def combo_split():
+  '''
+  It takes too long to filter val and test out of combo, 
+  so we'll do it once here and save it.
+  This has to be re-run whenever extras changes.
+  '''
+  start = datetime.now()
+  combo = load('combo.gl')
+  extras = load('extras2.gl')
+  combo.add_columns(extras)
+  print 'building and saving test...'
+  test = combo[combo['isTest']]
+  path = os.path.join(GL_DATA, 'combo_test2.gl')
+  test.save(path)
+  print 'building and saving val...'
+  val  = combo[combo['isVal']]
+  path = os.path.join(GL_DATA, 'combo_val2.gl')
+  val.save(path)
+  print 'elapsed time: %s' % (datetime.now() - start)
+  
+def make_ds():
+  start = datetime.now()
+  print 'loading...'
+  combo = load('combo.gl')
+  extras = load('extras2.gl')
+  combo.add_columns(extras)
+  tr_ds = load('train_ds.gl')
+  tr_ds = tr_ds[['SearchID','AdID']]
+  print 'building ds...'
+  combo_ds = combo.join(tr_ds)
+  print 'saving ds...'
+  path = os.path.join(GL_DATA, 'combo_ds2.gl')
+  combo_ds.save(path)
+  print 'elapsed time: %s' % (datetime.now() - start)
   
 
 def build_combo():
