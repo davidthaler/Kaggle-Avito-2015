@@ -95,8 +95,9 @@ def train(tr, si, alpha, beta, L1,
         print 'processed %d lines on training pass %d' % (k + 1, j + 1)
   return model
 
+# WATCH OUT! Not correct on tr[:1000000] or similar!
 
-def compute_offset(tr, maxlines):
+def compute_offset(tr):
   '''
   Using down sampled negative biases the mean prediction. This function
   computes an adjustment to correct that bias.
@@ -110,11 +111,7 @@ def compute_offset(tr, maxlines):
   # This is (# rows in train_context) - (# rows in val_context).
   # It is the # of rows train_ds was down-sampled from.
   TRAIN_ONLY_ROWS = 184967172.0
-  
-  if maxlines:
-    n_click_tr = float(tr[:maxlines]['IsClick'].sum())
-  else:
-    n_click_tr = float(tr['IsClick'].sum())
+  n_click_tr = float(tr['IsClick'].sum())
   p_all = n_click_tr / TRAIN_ONLY_ROWS
   p_sample = n_click_tr / tr.shape[0]
   offset = log(p_all/(1.0 - p_all)) - log(p_sample/ (1.0 - p_sample))
