@@ -22,3 +22,14 @@ def shift(submit_id, new_mean, is_gzip=True):
   p = 1.0/(1.0 + np.exp(-dv))
   sub['IsClick'] = p
   return sub
+  
+def shift_df(sub, new_mean):
+  old_mean = sub.IsClick.mean()
+  offset = log(new_mean/(1.0 - new_mean)) - log(old_mean/(1.0 - old_mean))
+  p = sub.IsClick.values
+  dv = np.log(p/(1.0 - p))
+  dv += offset
+  p = 1.0/(1.0 + np.exp(-dv))
+  out =  sub.copy()
+  out['IsClick'] = p
+  return out
